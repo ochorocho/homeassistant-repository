@@ -1,0 +1,3 @@
+[submodule "inetbox"]
+	path = inetbox
+	url = https://github.com/ochorocho/homeassistant-inetbox/

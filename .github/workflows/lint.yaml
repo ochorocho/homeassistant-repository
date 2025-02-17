@@ -20,7 +20,7 @@ jobs:
       - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: true
 
       - name: 🔍 Find add-on directories
         id: addons
@@ -44,6 +44,8 @@ jobs:
     steps:
       - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Test output
         run: ls -la ${{ matrix.path }}

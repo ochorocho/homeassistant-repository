@@ -62,6 +62,7 @@ jobs:
             echo "No add-on had monitored file changes (${{ env.MONITORED_FILES }})"
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "addons=[]" >> $GITHUB_OUTPUT
+          fi
 
   build:
     needs: init

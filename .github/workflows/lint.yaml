@@ -24,10 +24,18 @@ jobs:
         id: addons
         uses: home-assistant/actions/helpers/find-addons@master
 
+      - name: 🛠 Ensure add-ons output is valid
+        run: |
+          if [[ -z "${{ steps.addons.outputs.addons_list }}" || "${{ steps.addons.outputs.addons_list }}" == "[]" ]]; then
+            echo "No add-ons found. Exiting workflow."
+            exit 1
+          fi
+
   lint:
     name: Lint add-on ${{ matrix.path }}
     runs-on: ubuntu-latest
     needs: find
+    if: needs.find.outputs.addons != '[]'  # Only run if add-ons exist
     strategy:
       matrix:
         path: ${{ fromJson(needs.find.outputs.addons) }}

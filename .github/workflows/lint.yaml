@@ -1,8 +1,4 @@
-name: Builder
-
-env:
-  BUILD_ARGS: "--test"
-  MONITORED_FILES: "build.yaml config.yaml Dockerfile rootfs"
+name: Lint
 
 on:
   push:
@@ -11,112 +7,35 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
-  init:
+  find:
+    name: Find add-ons
     runs-on: ubuntu-latest
-    name: Initialize builds
     outputs:
-      changed_addons: ${{ steps.changed_addons.outputs.addons }}
-      changed: ${{ steps.changed_addons.outputs.changed }}
+      addons: ${{ steps.addons.outputs.addons_list }}
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v4.2.2
 
-      - name: Detect changed files
-        id: changed_files
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            monitored:
-              - '*/build.yaml'
-              - '*/config.yaml'
-              - '*/Dockerfile'
-              - '*/rootfs/**'
-
-      - name: Find add-on directories
+      - name: 🔍 Find add-on directories
         id: addons
         uses: home-assistant/actions/helpers/find-addons@master
 
-      - name: Get changed add-ons
-        id: changed_addons
-        run: |
-          declare -a changed_addons
-          for addon in ${{ steps.addons.outputs.addons }}; do
-            for file in ${{ env.MONITORED_FILES }}; do
-              if [[ -n "$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- $addon/$file)" ]]; then
-                if [[ ! " ${changed_addons[*]} " =~ " ${addon} " ]]; then
-                  changed_addons+=("\"${addon}\"")
-                fi
-              fi
-            done
-          done
-
-          if [[ ${#changed_addons[@]} -gt 0 ]]; then
-            echo "Changed add-ons: ${changed_addons[*]}"
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "addons=[${changed_addons[*]}]" >> $GITHUB_OUTPUT
-          else
-            echo "No add-on had monitored file changes (${{ env.MONITORED_FILES }})"
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "addons=[]" >> $GITHUB_OUTPUT
-
-  build:
-    needs: init
+  lint:
+    name: Lint add-on ${{ matrix.path }}
     runs-on: ubuntu-latest
-    if: needs.init.outputs.changed == 'true'
-    name: Build ${{ matrix.arch }} ${{ matrix.addon }} add-on
+    needs: find
     strategy:
       matrix:
-        addon: ${{ fromJson(needs.init.outputs.changed_addons) }}
-        arch: ["aarch64", "amd64", "armhf", "armv7", "i386"]
-    permissions:
-      contents: read
-      packages: write
-
+        path: ${{ fromJson(needs.find.outputs.addons) }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v4.2.2
 
-      - name: Get add-on information
-        id: info
-        uses: home-assistant/actions/helpers/info@master
+      - name: 🚀 Run Home Assistant Add-on Lint
+        uses: frenck/action-addon-linter@v2.18
         with:
-          path: "./${{ matrix.addon }}"
-
-      - name: Determine if build is needed
-        id: check
-        run: |
-          if [[ "${{ steps.info.outputs.image }}" == "null" ]]; then
-            echo "Image property is not defined, skipping build"
-            echo "build_arch=false" >> $GITHUB_OUTPUT
-          elif [[ "${{ steps.info.outputs.architectures }}" =~ ${{ matrix.arch }} ]]; then
-            echo "build_arch=true" >> $GITHUB_OUTPUT
-            echo "image=$(echo ${{ steps.info.outputs.image }} | cut -d'/' -f3)" >> $GITHUB_OUTPUT
-
-            if [[ -z "${{ github.head_ref }}" && "${{ github.event_name }}" == "push" ]]; then
-              echo "BUILD_ARGS=" >> $GITHUB_ENV
-            fi
-          else
-            echo "${{ matrix.arch }} is not a valid arch for ${{ matrix.addon }}, skipping build"
-            echo "build_arch=false" >> $GITHUB_OUTPUT
-
-      - name: Login to GitHub Container Registry
-        if: env.BUILD_ARGS != '--test'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build ${{ matrix.addon }} add-on
-        if: steps.check.outputs.build_arch == 'true'
-        uses: home-assistant/builder@2024.08.2
-        with:
-          args: |
-            ${{ env.BUILD_ARGS }} \
-            --${{ matrix.arch }} \
-            --target /data/${{ matrix.addon }} \
-            --image "${{ steps.check.outputs.image }}" \
-            --docker-hub "ghcr.io/${{ github.repository_owner }}" \
-            --addon
+          path: "./${{ matrix.path }}"

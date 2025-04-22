@@ -8,12 +8,17 @@ Add-on documentation: <https://developers.home-assistant.io/docs/add-ons>
 
 This repository contains the following add-ons
 
-### [Truma Inetbox add-on](./inetbox)
+### [Truma Inetbox add-on](https://github.com/ochorocho/homeassistant-inetbox)
 
 This add-on replaces the inetbox using [inetbox.py](https://github.com/danielfett/inetbox.py/blob/master/README.md#inetboxpy).
 
 Once configured, it will send MQTT messages
 to the broker. It was tested using the mosquitto Home Assistant Add-on
+
+### [Hetzner DNS add-on](https://github.com/ochorocho/homeassistant-hetzner-dns)
+
+Use the value of a given entity that contains the current external IP address (e.g. UPnP sensor)
+and set the IP for a given set of domains using the Hetzner DNS API. 
 
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
